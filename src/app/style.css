@@ -1,0 +1,33 @@
+:root {
+  margin: 1em;
+  box-sizing: border-box;
+  background-color: silver;
+  font: 16px monospace;
+}
+
+main {
+  max-width: 600px;
+  margin: auto;
+  background-color: white;
+  padding: 2em;
+  border-radius: 2em;
+  box-shadow: 0 0 5em black;
+}
+
+form {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 1em;
+}
+
+form > label {
+  text-align: right;
+}
+
+h2 {
+  padding-top: 1em;
+}
+
+ul > li {
+  margin-bottom: 1ex;
+}

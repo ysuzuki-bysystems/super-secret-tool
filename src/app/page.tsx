@@ -1,95 +1,183 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
 
-export default function Home() {
+import "./style.css";
+
+import { Dispatch, useCallback, useEffect, useId, useState } from "react";
+
+import { importKey, encode, decode } from "@/secret";
+
+function useKey(text: string): CryptoKey | undefined {
+  const [key, setKey] = useState<CryptoKey | undefined>();
+  useEffect(() => {
+    setKey(void 0);
+    if (text === "") {
+      return;
+    }
+
+    const abort = new AbortController();
+    (async () => {
+      const result = await importKey(text);
+      setKey(result);
+    })();
+    return () => abort.abort();
+  }, [text]);
+
+  return key;
+}
+
+function useUrl(text: string): URL | undefined {
+  const [url, setUrl] = useState<URL | undefined>();
+  useEffect(() => {
+    try {
+      setUrl(new URL(text));
+    } catch (e) {
+      setUrl(void 0);
+    }
+  }, [text]);
+
+  return url;
+}
+
+function useRange(beginText: string, numText: string): [bigint, bigint] | undefined {
+  const [range, setRange] = useState<[bigint, bigint] | undefined>();
+  useEffect(() => {
+    setRange(void 0);
+    const begin = BigInt(beginText);
+    const num = BigInt(numText);
+    setRange([begin, begin + num]);
+  }, [beginText, numText]);
+
+  return range;
+}
+
+function useDecode(key: CryptoKey | undefined, target: string): bigint | undefined {
+  const [state, setState] = useState<bigint | undefined>();
+  useEffect(() => {
+    setState(void 0);
+
+    const abort = new AbortController();
+    (async () => {
+      if (typeof key === "undefined") {
+        return;
+      }
+
+      try {
+        const u = new URL(target);
+        const lk = u.searchParams.get("lk");
+        if (lk === null) {
+          return;
+        }
+        const result = await decode(key, lk);
+        setState(result);
+        return;
+      } catch (e) {
+        // pass
+      }
+
+      try {
+        const result = await decode(key, target);
+        setState(result);
+      } catch (e) {
+        // pass
+      }
+    })();
+    return () => abort.abort();
+  }, [key, target]);
+
+
+  return state;
+}
+
+function useEncode(key: CryptoKey | undefined, url: URL | undefined, range: [bigint, bigint] | undefined): [bigint, URL][] | undefined {
+  const [urls, setUrls] = useState<[bigint, URL][] | undefined>();
+  useEffect(() => {
+    setUrls([]);
+
+    const abort = new AbortController();
+    (async () => {
+      if (typeof key === "undefined" || typeof url === "undefined" || typeof range === "undefined") {
+        return;
+      }
+
+      const [begin ,end] = range;
+      for (let n = begin; n < end; n++) {
+        const lk = await encode(key, n);
+        if (abort.signal.aborted) {
+          return;
+        }
+
+        const query = new URLSearchParams({ lk });
+        setUrls((before) => [...(before ?? []), [n, new URL(`?${query}`, url)]]);
+      }
+    })();
+    return () => abort.abort();
+  }, [key, url, range]);
+
+  return urls;
+}
+
+function usePersistedState(name: string): [string, Dispatch<string>] {
+  const [state, setState] = useState("");
+  useEffect(() => {
+    const value = localStorage.getItem(name);
+    setState(value ?? "");
+  }, []);
+  const dispatch = useCallback<Dispatch<string>>((input) => {
+    localStorage.setItem(name, input);
+    setState(input);
+  }, []);
+
+  return [state, dispatch];
+}
+
+export default function() {
+  const [keyText, setKeyText] = usePersistedState("key");
+  const [orUrl, setOrUrl] = useState<string>("");
+  const [urlText, setUrlText] = usePersistedState("url");
+  const [beginText, setBeginText] = useState<string>("1");
+  const [numText, setNumText] = useState<string>("1");
+
+  const key = useKey(keyText);
+  const decoded = useDecode(key, orUrl);
+  const url = useUrl(urlText);
+  const range = useRange(beginText, numText);
+  const urls = useEncode(key, url, range);
+
+  const idKey = useId();
+
+  const idOrUrl = useId();
+
+  const idUrl = useId();
+  const idBegin = useId();
+  const idNum = useId();
+
   return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>src/app/page.tsx</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
-
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore starter templates for Next.js.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
+    <main>
+      <h1>SUPER SECRET SYSTEM.</h1>
+      <form>
+        <label htmlFor={idKey}>Key</label>
+        <input id={idKey} type="text" value={keyText} onChange={evt => setKeyText(evt.target.value)} />
+      </form>
+      <h2>decode</h2>
+      <form>
+        <label htmlFor={idOrUrl}>Text or URL</label>
+        <input id={idOrUrl} type="text" value={orUrl} onChange={evt => setOrUrl(evt.target.value)} />
+      </form>
+      <output>{decoded?.toString()}</output>
+      <h2>encode</h2>
+      <form>
+        <label htmlFor={idUrl}>URL</label>
+        <input id={idUrl} type="url" value={urlText} onChange={evt => setUrlText(evt.target.value)} />
+        <label htmlFor={idBegin}>Begin</label>
+        <input id={idBegin} type="number" value={beginText} onChange={evt => setBeginText(evt.target.value)} />
+        <label htmlFor={idNum}>Num</label>
+        <input id={idNum} type="number" value={numText} onChange={evt => setNumText(evt.target.value)} />
+      </form>
+      <ul>
+        {urls && urls.map(([n, url]) => <li key={n}>
+          {n.toString()} <a href={url.href} target="_blank">{url.href}</a>
+        </li>)}
+      </ul>
     </main>
   );
 }
