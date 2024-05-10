@@ -121,16 +121,16 @@ function usePersistedState(name: string): [string, Dispatch<string>] {
   useEffect(() => {
     const value = localStorage.getItem(name);
     setState(value ?? "");
-  }, []);
+  }, [name]);
   const dispatch = useCallback<Dispatch<string>>((input) => {
     localStorage.setItem(name, input);
     setState(input);
-  }, []);
+  }, [name]);
 
   return [state, dispatch];
 }
 
-export default function() {
+export default function Home() {
   const [keyText, setKeyText] = usePersistedState("key");
   const [orUrl, setOrUrl] = useState<string>("");
   const [urlText, setUrlText] = usePersistedState("url");
