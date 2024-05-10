@@ -63,7 +63,7 @@ async function atob(val: string): Promise<Uint8Array> {
 export async function encode(key: CryptoKey, val: bigint): Promise<string> {
   const blockSize = 16;
 
-  const plain = new TextEncoder().encode(val.toString(16));
+  const plain = new TextEncoder().encode(val.toString(16).toUpperCase());
   const cipherText: number[] = [];
   for (const [block] of blocks(plain, blockSize)) {
     // ブロック単位に iv を初期化しながら符号化
